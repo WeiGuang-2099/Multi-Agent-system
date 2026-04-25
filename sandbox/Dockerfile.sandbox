@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    numpy>=1.26 \
+    pandas>=2.2 \
+    matplotlib>=3.8 \
+    requests>=2.31
+
+WORKDIR /sandbox
+
+RUN useradd --create-home sandbox_user
+USER sandbox_user
+
+ENTRYPOINT ["python", "/sandbox/code.py"]

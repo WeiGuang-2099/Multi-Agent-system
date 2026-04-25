@@ -1,0 +1,29 @@
+from unittest.mock import patch
+
+import pytest
+
+from src.llm.providers import create_llm
+
+
+def test_unsupported_provider_raises():
+    with pytest.raises(ValueError, match="Unsupported LLM provider: fake"):
+        create_llm(provider="fake", model="test-model")
+
+
+def test_create_anthropic_llm():
+    with patch("langchain_anthropic.ChatAnthropic") as mock_cls:
+        create_llm(provider="anthropic", model="claude-sonnet-4-20250514")
+        mock_cls.assert_called_once()
+
+
+def test_create_openai_llm():
+    with patch("langchain_openai.ChatOpenAI") as mock_cls:
+        create_llm(provider="openai", model="gpt-4o")
+        mock_cls.assert_called_once()
+
+
+def test_create_google_llm():
+    pytest.importorskip("langchain_google_genai")
+    with patch("langchain_google_genai.ChatGoogleGenerativeAI") as mock_cls:
+        create_llm(provider="google", model="gemini-2.0-flash")
+        mock_cls.assert_called_once()
