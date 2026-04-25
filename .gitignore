@@ -6,6 +6,7 @@ __pycache__/
 dist/
 build/
 *.egg
+*.whl
 
 # Environment
 .env
@@ -17,17 +18,27 @@ env/
 .vscode/
 .idea/
 .claude/
+.qoder/
 *.swp
 *.swo
+*~
 
 # Testing
 .pytest_cache/
 htmlcov/
 .coverage
+.coverage.*
+coverage.xml
+junit.xml
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Logs
+*.log
 
 # Project specific
 *.db
+review_diff.txt

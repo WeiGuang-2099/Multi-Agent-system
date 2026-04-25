@@ -21,6 +21,7 @@ class AgentState(TypedDict, total=False):
     final_report: str
     retry_count: dict[str, int]
     errors: list[str]
+    report_ready: bool
 
 
 class RouteDecision(BaseModel):

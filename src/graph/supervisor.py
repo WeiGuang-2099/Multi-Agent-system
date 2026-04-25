@@ -14,7 +14,8 @@ def supervisor_node(state: AgentState) -> Command:
     messages = [SystemMessage(content=SUPERVISOR_SYSTEM_PROMPT)]
 
     if state.get("messages"):
-        messages.extend(state["messages"])
+        state_messages = state["messages"][-20:]  # Message windowing: keep last 20
+        messages.extend(state_messages)
 
     context_parts = []
     if state.get("task_description"):
@@ -55,27 +56,7 @@ def supervisor_node(state: AgentState) -> Command:
 
 
 def route_after_worker(state: AgentState) -> str:
-    last_message = state["messages"][-1] if state.get("messages") else None
-    if last_message and hasattr(last_message, "content"):
-        content = last_message.content
-        if isinstance(content, str) and "FINAL_REPORT_READY" in content:
-            return "__end__"
-
-    # Check if we've exceeded retry limits
-    retry_count = state.get("retry_count", {})
-    agent_name = _get_last_agent(state)
-    if agent_name and retry_count.get(agent_name, 0) >= settings.max_retries:
-        return "supervisor"
-
+    """Route after a worker agent completes. Check if report is ready."""
+    if state.get("report_ready"):
+        return "__end__"
     return "supervisor"
-
-
-def _get_last_agent(state: AgentState) -> str | None:
-    messages = state.get("messages", [])
-    for msg in reversed(messages):
-        content = getattr(msg, "content", "")
-        if isinstance(content, str):
-            for agent in ["search_agent", "code_agent", "writer_agent"]:
-                if f"[{agent}]" in content:
-                    return agent
-    return None

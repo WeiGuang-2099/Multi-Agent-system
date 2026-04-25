@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import time
 
 from langchain_core.messages import AIMessage
 from langgraph.types import Command
@@ -27,7 +28,7 @@ class BaseAgent(ABC):
             retry_count[self.agent_name] = current + 1
 
             errors = state.get("errors", []).copy()
-            errors.append(f"{self.agent_name} failed: {str(e)}")
+            errors.append(f"{self.agent_name} failed (attempt {current + 1}/{settings.max_retries}): {str(e)}")
 
             if retry_count[self.agent_name] >= settings.max_retries:
                 return Command(
@@ -37,6 +38,9 @@ class BaseAgent(ABC):
                     },
                     goto="supervisor",
                 )
+
+            delay = min(2 ** current, 16)  # 1s, 2s, 4s, 8s, 16s max
+            time.sleep(delay)
 
             return Command(
                 update={

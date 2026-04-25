@@ -1,4 +1,8 @@
+import logging
+
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -20,7 +24,7 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     postgres_db: str = "research_assistant"
     postgres_user: str = "agent"
-    postgres_password: str = "agent_password"
+    postgres_password: str = ""
 
     # LangSmith
     langsmith_tracing: bool = False
@@ -51,6 +55,31 @@ class Settings(BaseSettings):
     def get_model(self, agent_name: str) -> str:
         override = getattr(self, f"{agent_name}_model", None)
         return override or self.default_llm_model
+
+    def validate_required_keys(self) -> None:
+        """Validate that required API keys are configured."""
+        provider = self.default_llm_provider
+        key_map = {
+            "anthropic": self.anthropic_api_key,
+            "openai": self.openai_api_key,
+            "google": self.google_api_key,
+        }
+        api_key = key_map.get(provider, "")
+        if not api_key:
+            raise ValueError(
+                f"API key for default LLM provider '{provider}' is not set. "
+                f"Please set {provider.upper()}_API_KEY in your .env file."
+            )
+
+        if not self.tavily_api_key:
+            logger.warning(
+                "TAVILY_API_KEY not set — search functionality will not work"
+            )
+
+        if not self.postgres_password:
+            logger.warning(
+                "POSTGRES_PASSWORD not set — using empty password is insecure"
+            )
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

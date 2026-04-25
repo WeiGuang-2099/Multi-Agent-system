@@ -1,4 +1,6 @@
 import asyncio
+import html
+import uuid
 
 import streamlit as st
 
@@ -52,16 +54,23 @@ with st.sidebar:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = str(uuid.uuid4())
+
 for msg in st.session_state.messages:
     role = msg["role"]
     with st.chat_message(role):
-        st.markdown(msg["content"])
+        st.markdown(html.escape(msg["content"]))
 
 if prompt := st.chat_input("Enter your research task..."):
+    if len(prompt) > 10_000:
+        st.error("Input too long. Maximum 10,000 characters allowed.")
+        st.stop()
+
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(html.escape(prompt))
 
     with st.chat_message("assistant"):
         progress_placeholder = st.empty()

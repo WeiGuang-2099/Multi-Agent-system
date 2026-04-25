@@ -19,6 +19,22 @@ from src.graph.state import AgentState
 
 
 def _build_state(user_input: str) -> AgentState:
+    """Build agent state from user input. Supports JSON context for distributed mode."""
+    try:
+        context = json.loads(user_input)
+        if isinstance(context, dict) and "task_description" in context:
+            return {
+                "messages": [],
+                "task_description": context.get("task_description", ""),
+                "search_results": context.get("search_results", []),
+                "code_results": context.get("code_results", []),
+                "final_report": context.get("final_report", ""),
+                "retry_count": context.get("retry_count", {}),
+                "errors": context.get("errors", []),
+            }
+    except (json.JSONDecodeError, TypeError):
+        pass
+
     return {
         "messages": [],
         "task_description": user_input,
@@ -146,7 +162,41 @@ class WriterAgentExecutor(AgentExecutor):
         await event_queue.enqueue_event(_make_canceled_task(context))
 
 
+class SupervisorAgentExecutor(AgentExecutor):
+    """Executor for the supervisor agent in distributed A2A mode."""
+
+    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        user_input = context.get_user_input()
+
+        task = Task(
+            id=context.task_id,
+            context_id=context.context_id,
+            status=TaskStatus(state=TaskState.working),
+        )
+        await event_queue.enqueue_event(task)
+
+        try:
+            from src.graph.workflow import build_workflow
+
+            graph = await build_workflow()
+            config = {"configurable": {"thread_id": f"a2a-{context.task_id}"}}
+
+            state = _build_state(user_input)
+            result = await graph.ainvoke(state, config)
+
+            report = result.get("final_report", "No report generated.")
+            task = _make_completed_task(context, report)
+        except Exception as e:
+            task = _make_failed_task(context, f"Supervisor failed: {str(e)}")
+
+        await event_queue.enqueue_event(task)
+
+    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
+        await event_queue.enqueue_event(_make_canceled_task(context))
+
+
 EXECUTORS = {
+    "supervisor": SupervisorAgentExecutor,
     "search": SearchAgentExecutor,
     "code": CodeAgentExecutor,
     "writer": WriterAgentExecutor,

@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import uuid
 
 from src.config import settings
 
@@ -88,7 +89,7 @@ async def _execute_task(task: str):
     from src.graph.workflow import build_workflow
 
     graph = await build_workflow()
-    config = {"configurable": {"thread_id": "cli-session"}}
+    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
 
     result = await graph.ainvoke(
         {

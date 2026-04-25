@@ -4,22 +4,26 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-research_assistant}
       POSTGRES_USER: ${POSTGRES_USER:-agent}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agent_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agent}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - internal
 
   sandbox:
     build:
       context: ./sandbox
       dockerfile: Dockerfile.sandbox
     image: research-assistant-sandbox:latest
+    networks:
+      - internal
 
   supervisor:
     build:
@@ -34,8 +38,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - internal
 
   search-agent:
     build:
@@ -50,6 +54,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - internal
 
   code-agent:
     build:
@@ -68,6 +74,13 @@ services:
         condition: service_healthy
       sandbox:
         condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '2'
+    networks:
+      - internal
 
   writer-agent:
     build:
@@ -82,6 +95,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - internal
 
   streamlit:
     build:
@@ -95,6 +110,12 @@ services:
       SUPERVISOR_URL: http://supervisor:8001
     depends_on:
       - supervisor
+    networks:
+      - internal
 
 volumes:
   postgres_data:
+
+networks:
+  internal:
+    driver: bridge

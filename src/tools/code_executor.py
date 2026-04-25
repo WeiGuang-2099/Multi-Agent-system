@@ -1,3 +1,4 @@
+import logging
 import os
 import stat
 import subprocess
@@ -8,10 +9,21 @@ from langchain_core.tools import tool
 
 from src.config import settings
 
+logger = logging.getLogger(__name__)
+
+MAX_CODE_SIZE = 50_000
+
 
 @tool
 def execute_python_code(code: str) -> str:
     """Execute Python code in a Docker sandbox. Returns stdout, stderr, and exit code."""
+    if len(code) > MAX_CODE_SIZE:
+        return _format_result(
+            stdout="",
+            stderr=f"Code too large ({len(code)} bytes). Maximum allowed: {MAX_CODE_SIZE} bytes.",
+            exit_code=-1,
+        )
+
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".py", prefix="sandbox_", delete=False
     ) as f:
@@ -20,8 +32,8 @@ def execute_python_code(code: str) -> str:
 
     try:
         os.chmod(code_path, stat.S_IRUSR | stat.S_IRGRP)
-    except OSError:
-        pass
+    except OSError as e:
+        logger.warning(f"Failed to set file permissions on {code_path}: {e}")
 
     try:
         result = subprocess.run(
@@ -30,6 +42,12 @@ def execute_python_code(code: str) -> str:
                 "--memory", settings.sandbox_memory_limit,
                 "--cpus", settings.sandbox_cpu_limit,
                 "--network", "none",
+                "--cap-drop=ALL",
+                "--pids-limit", "50",
+                "--memory-swap", settings.sandbox_memory_limit,
+                "--security-opt", "no-new-privileges",
+                "--read-only",
+                "--tmpfs", "/tmp:size=64m",
                 "-v", f"{code_path}:/sandbox/code.py:ro",
                 "research-assistant-sandbox:latest",
             ],
@@ -58,8 +76,8 @@ def execute_python_code(code: str) -> str:
     finally:
         try:
             Path(code_path).unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as e:
+            logger.warning(f"Failed to clean up temp file {code_path}: {e}")
 
 
 def _format_result(stdout: str, stderr: str, exit_code: int) -> str:

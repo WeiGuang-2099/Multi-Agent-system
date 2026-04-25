@@ -1,6 +1,6 @@
 import json
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.types import Command
 
 from src.agents.base import BaseAgent
@@ -30,6 +30,19 @@ class SearchAgent(BaseAgent):
         )
 
         response = llm_with_tools.invoke(messages)
+        messages.append(response)
+
+        max_iterations = 5
+        iteration = 0
+        while response.tool_calls and iteration < max_iterations:
+            for tool_call in response.tool_calls:
+                tool_result = tavily_search.invoke(tool_call["args"])
+                messages.append(
+                    ToolMessage(content=str(tool_result), tool_call_id=tool_call["id"])
+                )
+            response = llm_with_tools.invoke(messages)
+            messages.append(response)
+            iteration += 1
 
         results_count = len(state.get("search_results", [])) + 1
         return json.dumps(

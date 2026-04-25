@@ -1,6 +1,6 @@
 import json
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.types import Command
 
 from src.agents.base import BaseAgent
@@ -39,6 +39,19 @@ class CodeAgent(BaseAgent):
         )
 
         response = llm_with_tools.invoke(messages)
+        messages.append(response)
+
+        max_iterations = 5
+        iteration = 0
+        while response.tool_calls and iteration < max_iterations:
+            for tool_call in response.tool_calls:
+                tool_result = execute_python_code.invoke(tool_call["args"])
+                messages.append(
+                    ToolMessage(content=str(tool_result), tool_call_id=tool_call["id"])
+                )
+            response = llm_with_tools.invoke(messages)
+            messages.append(response)
+            iteration += 1
 
         return json.dumps(
             {

@@ -56,11 +56,9 @@ def writer_agent_node(state: AgentState) -> Command:
 
     return Command(
         update={
-            "messages": [
-                AIMessage(content="FINAL_REPORT_READY"),
-                AIMessage(content=report),
-            ],
+            "messages": [AIMessage(content=report)],
             "final_report": report,
+            "report_ready": True,
         },
-        goto=result.goto,
+        goto="__end__",
     )
