@@ -77,24 +77,68 @@ if prompt := st.chat_input("Enter your research task..."):
         progress_placeholder.info("Supervisor is analyzing your task...")
 
         async def run_research():
+            supervisor_url = settings.supervisor_url
+            # If supervisor_url is not localhost, use A2A distributed mode
+            if supervisor_url and "localhost" not in supervisor_url:
+                report = await _run_via_a2a(supervisor_url, prompt)
+            else:
+                report = await _run_local(prompt, provider_key, selected_model)
+            return report
+
+        async def _run_via_a2a(supervisor_url: str, task: str) -> str:
+            import uuid as uuid_mod
+            import httpx
+
+            endpoint = f"{supervisor_url}/a2a"
+            payload = {
+                "jsonrpc": "2.0",
+                "id": str(uuid_mod.uuid4()),
+                "method": "tasks/send",
+                "params": {
+                    "id": str(uuid_mod.uuid4()),
+                    "message": {
+                        "role": "user",
+                        "parts": [{"type": "text", "text": task}],
+                    },
+                },
+            }
+
+            progress_placeholder.info("Sending task to Supervisor via A2A...")
+
+            async with httpx.AsyncClient(timeout=300.0) as http_client:
+                response = await http_client.post(endpoint, json=payload)
+                response.raise_for_status()
+
+            data = response.json()
+            result = data.get("result", {})
+            status = result.get("status", {})
+            parts = status.get("message", {}).get("parts", [])
+            texts = [p.get("text", "") for p in parts if "text" in p]
+
+            progress_placeholder.empty()
+            report = "\n".join(texts) if texts else "No report generated."
+            st.markdown(report)
+            return report
+
+        async def _run_local(prompt_text: str, prov_key: str, sel_model: str) -> str:
             from src.graph.workflow import build_workflow
 
             original_provider = settings.default_llm_provider
             original_model = settings.default_llm_model
 
-            settings.default_llm_provider = provider_key
-            settings.default_llm_model = selected_model
+            settings.default_llm_provider = prov_key
+            settings.default_llm_model = sel_model
 
             try:
                 graph = await build_workflow()
                 config = {"configurable": {"thread_id": st.session_state.get("thread_id", "default")}}
 
-                progress_placeholder.info("Search Agent: searching the web...")
+                progress_placeholder.info("Processing research task...")
 
                 result = await graph.ainvoke(
                     {
                         "messages": [],
-                        "task_description": prompt,
+                        "task_description": prompt_text,
                         "search_results": [],
                         "code_results": [],
                         "final_report": "",
@@ -108,14 +152,12 @@ if prompt := st.chat_input("Enter your research task..."):
 
                 if result.get("final_report"):
                     st.markdown(result["final_report"])
-
                     st.download_button(
                         label="Download Report (Markdown)",
                         data=result["final_report"],
                         file_name="research_report.md",
                         mime="text/markdown",
                     )
-
                     return result["final_report"]
                 else:
                     error_msg = "Failed to generate report."

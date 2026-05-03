@@ -62,9 +62,9 @@ class CodeAgent(BaseAgent):
         )
 
 
-def code_agent_node(state: AgentState) -> Command:
+async def code_agent_node(state: AgentState) -> Command:
     agent = CodeAgent()
-    result = agent.execute(state)
+    result = await agent.execute(state)
 
     code_results = state.get("code_results", [])
     messages = result.update.get("messages", [])

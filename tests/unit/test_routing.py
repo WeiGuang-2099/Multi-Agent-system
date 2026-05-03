@@ -55,3 +55,23 @@ def test_route_decision_model():
     assert decision.agent_name == "search_agent"
     assert decision.reasoning == "Need to find information"
     assert decision.subtask_description == "Search for Python asyncio patterns"
+
+
+def test_route_empty_messages():
+    state: AgentState = {"messages": []}
+    from langgraph.graph import END
+    result = _route_from_supervisor(state)
+    assert result == END
+
+
+def test_route_multiple_messages_picks_last():
+    from langgraph.graph import END
+
+    state: AgentState = {
+        "messages": [
+            MagicMock(content="Routing to search_agent: first search"),
+            MagicMock(content="Routing to code_agent: then code"),
+        ]
+    }
+    result = _route_from_supervisor(state)
+    assert result == "code_agent"

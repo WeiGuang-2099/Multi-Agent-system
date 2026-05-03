@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.a2a.agent_cards import ALL_CARDS
+from src.config import settings
 
 
 def test_all_agent_cards_defined():
@@ -14,7 +15,7 @@ def test_all_agent_cards_defined():
 def test_agent_card_fields():
     card = ALL_CARDS["search"]
     assert card.name == "Search Agent"
-    assert card.url == "http://localhost:8002"
+    assert card.url == f"http://localhost:{settings.search_agent_port}"
     assert len(card.skills) == 1
     assert card.skills[0].id == "web_search"
 

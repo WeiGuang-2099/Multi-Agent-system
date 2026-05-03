@@ -36,33 +36,39 @@ def _build_graph_builder() -> StateGraph:
 
 
 async def build_workflow():
-    """Build the async workflow with PostgreSQL checkpointing."""
-    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-
+    """Build the async workflow with PostgreSQL checkpointing, falling back to MemorySaver."""
     builder = _build_graph_builder()
 
     try:
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
         checkpointer = AsyncPostgresSaver.from_conn_string(settings.postgres_uri)
         await checkpointer.setup()
+        logger.info("Using PostgreSQL checkpointer")
     except Exception as e:
-        logger.error(f"Failed to setup async PostgreSQL checkpointer: {e}")
-        raise ConnectionError(f"Cannot connect to PostgreSQL: {e}") from e
+        logger.warning(f"PostgreSQL unavailable ({e}), falling back to MemorySaver")
+        from langgraph.checkpoint.memory import MemorySaver
+
+        checkpointer = MemorySaver()
 
     return builder.compile(checkpointer=checkpointer)
 
 
 def build_workflow_sync():
-    """Build the sync workflow with PostgreSQL checkpointing."""
-    from langgraph.checkpoint.postgres import PostgresSaver
-
+    """Build the sync workflow with PostgreSQL checkpointing, falling back to MemorySaver."""
     builder = _build_graph_builder()
 
     try:
+        from langgraph.checkpoint.postgres import PostgresSaver
+
         checkpointer = PostgresSaver.from_conn_string(settings.postgres_uri)
         checkpointer.setup()
+        logger.info("Using PostgreSQL checkpointer (sync)")
     except Exception as e:
-        logger.error(f"Failed to setup sync PostgreSQL checkpointer: {e}")
-        raise ConnectionError(f"Cannot connect to PostgreSQL: {e}") from e
+        logger.warning(f"PostgreSQL unavailable ({e}), falling back to MemorySaver (sync)")
+        from langgraph.checkpoint.memory import MemorySaver
+
+        checkpointer = MemorySaver()
 
     return builder.compile(checkpointer=checkpointer)
 

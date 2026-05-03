@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     search_agent_port: int = 8002
     code_agent_port: int = 8003
     writer_agent_port: int = 8004
+    streamlit_port: int = 8501
+
+    supervisor_url: str = "http://localhost:8001"
 
     # Sandbox
     sandbox_memory_limit: str = "512m"
@@ -51,6 +54,15 @@ class Settings(BaseSettings):
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    @property
+    def agent_urls(self) -> dict[str, str]:
+        return {
+            "search_agent": f"http://localhost:{self.search_agent_port}",
+            "code_agent": f"http://localhost:{self.code_agent_port}",
+            "writer_agent": f"http://localhost:{self.writer_agent_port}",
+            "supervisor": f"http://localhost:{self.supervisor_port}",
+        }
 
     def get_model(self, agent_name: str) -> str:
         override = getattr(self, f"{agent_name}_model", None)

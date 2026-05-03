@@ -1,5 +1,5 @@
+import asyncio
 from abc import ABC, abstractmethod
-import time
 
 from langchain_core.messages import AIMessage
 from langgraph.types import Command
@@ -11,9 +11,9 @@ from src.graph.state import AgentState
 class BaseAgent(ABC):
     agent_name: str = "base"
 
-    def execute(self, state: AgentState) -> Command:
+    async def execute(self, state: AgentState) -> Command:
         try:
-            result = self._run(state)
+            result = await asyncio.to_thread(self._run, state)
             return Command(
                 update={
                     "messages": [
@@ -39,8 +39,8 @@ class BaseAgent(ABC):
                     goto="supervisor",
                 )
 
-            delay = min(2 ** current, 16)  # 1s, 2s, 4s, 8s, 16s max
-            time.sleep(delay)
+            delay = min(2 ** current, 16)
+            await asyncio.sleep(delay)
 
             return Command(
                 update={

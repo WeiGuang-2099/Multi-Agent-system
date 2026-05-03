@@ -98,9 +98,14 @@ class SearchAgentExecutor(AgentExecutor):
         try:
             agent = SearchAgent()
             state = _build_state(user_input)
-            result = await asyncio.to_thread(agent._run, state)
+            cmd = await agent.execute(state)
 
-            task = _make_completed_task(context, result)
+            messages = cmd.update.get("messages", [])
+            content = ""
+            if messages and isinstance(messages[0].content, str):
+                content = messages[0].content
+
+            task = _make_completed_task(context, content)
         except Exception as e:
             task = _make_failed_task(context, f"Search failed: {str(e)}")
 
@@ -124,9 +129,14 @@ class CodeAgentExecutor(AgentExecutor):
         try:
             agent = CodeAgent()
             state = _build_state(user_input)
-            result = await asyncio.to_thread(agent._run, state)
+            cmd = await agent.execute(state)
 
-            task = _make_completed_task(context, result)
+            messages = cmd.update.get("messages", [])
+            content = ""
+            if messages and isinstance(messages[0].content, str):
+                content = messages[0].content
+
+            task = _make_completed_task(context, content)
         except Exception as e:
             task = _make_failed_task(context, f"Code execution failed: {str(e)}")
 
@@ -150,9 +160,14 @@ class WriterAgentExecutor(AgentExecutor):
         try:
             agent = WriterAgent()
             state = _build_state(user_input)
-            result = await asyncio.to_thread(agent._run, state)
+            cmd = await agent.execute(state)
 
-            task = _make_completed_task(context, result)
+            messages = cmd.update.get("messages", [])
+            content = ""
+            if messages and isinstance(messages[0].content, str):
+                content = messages[0].content
+
+            task = _make_completed_task(context, content)
         except Exception as e:
             task = _make_failed_task(context, f"Report writing failed: {str(e)}")
 
@@ -176,9 +191,9 @@ class SupervisorAgentExecutor(AgentExecutor):
         await event_queue.enqueue_event(task)
 
         try:
-            from src.graph.workflow import build_workflow
+            from src.graph.distributed_workflow import build_distributed_workflow
 
-            graph = await build_workflow()
+            graph = await build_distributed_workflow()
             config = {"configurable": {"thread_id": f"a2a-{context.task_id}"}}
 
             state = _build_state(user_input)

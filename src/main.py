@@ -50,7 +50,7 @@ def _run_streamlit():
 
     subprocess.run(
         [sys.executable, "-m", "streamlit", "run", "src/ui/streamlit_app.py",
-         "--server.port", str(settings.streamlit_port if hasattr(settings, "streamlit_port") else 8501)],
+         "--server.port", str(settings.streamlit_port)],
         cwd=".",
     )
 
@@ -80,16 +80,52 @@ def _run_single_agent(agent_name: str):
 
 def _run_supervisor(task: str | None):
     if task:
-        asyncio.run(_execute_task(task))
+        thread_id = str(uuid.uuid4())
+        asyncio.run(_execute_and_print(task, thread_id))
     else:
-        print("Interactive mode not yet implemented. Use --task to specify a task.")
+        _run_interactive()
 
 
-async def _execute_task(task: str):
+def _run_interactive():
+    print("Multi-Agent Research Assistant — Interactive Mode")
+    print("Type your research task and press Enter. Type 'exit' or 'quit' to stop.")
+    print()
+
+    while True:
+        try:
+            user_input = input("You> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nGoodbye!")
+            break
+
+        if not user_input:
+            continue
+        if user_input.lower() in ("exit", "quit"):
+            print("Goodbye!")
+            break
+
+        thread_id = str(uuid.uuid4())
+        asyncio.run(_execute_and_print(user_input, thread_id))
+
+
+async def _execute_and_print(task: str, thread_id: str | None = None):
+    result = await _execute_task(task, thread_id)
+    print()
+    print("=" * 60)
+    if result:
+        print(result)
+    else:
+        print("No report generated for this task.")
+    print("=" * 60)
+    print()
+
+
+async def _execute_task(task: str, thread_id: str | None = None):
     from src.graph.workflow import build_workflow
 
     graph = await build_workflow()
-    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+    tid = thread_id or str(uuid.uuid4())
+    config = {"configurable": {"thread_id": tid}}
 
     result = await graph.ainvoke(
         {
@@ -104,17 +140,15 @@ async def _execute_task(task: str):
         config,
     )
 
-    print("\n" + "=" * 60)
-    print("RESEARCH REPORT")
-    print("=" * 60)
     if result.get("final_report"):
-        print(result["final_report"])
-    else:
-        print("No report generated.")
-        if result.get("errors"):
-            print("\nErrors:")
-            for err in result["errors"]:
-                print(f"  - {err}")
+        return result["final_report"]
+
+    if result.get("errors"):
+        print("Errors encountered:")
+        for err in result["errors"]:
+            print(f"  - {err}")
+
+    return None
 
 
 if __name__ == "__main__":

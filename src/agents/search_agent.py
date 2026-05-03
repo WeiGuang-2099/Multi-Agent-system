@@ -55,9 +55,9 @@ class SearchAgent(BaseAgent):
         )
 
 
-def search_agent_node(state: AgentState) -> Command:
+async def search_agent_node(state: AgentState) -> Command:
     agent = SearchAgent()
-    result = agent.execute(state)
+    result = await agent.execute(state)
 
     if result.goto == "search_agent":
         return result

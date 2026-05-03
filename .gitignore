@@ -42,3 +42,13 @@ desktop.ini
 # Project specific
 *.db
 review_diff.txt
+
+# Docs / plans (build artifacts, not source)
+# docs/plans/ is tracked intentionally
+
+# Docker volumes
+postgres_data/
+
+# Temp / sandbox
+*.tmp
+*.bak

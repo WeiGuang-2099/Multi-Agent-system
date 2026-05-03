@@ -42,9 +42,9 @@ class WriterAgent(BaseAgent):
         return response.content
 
 
-def writer_agent_node(state: AgentState) -> Command:
+async def writer_agent_node(state: AgentState) -> Command:
     agent = WriterAgent()
-    result = agent.execute(state)
+    result = await agent.execute(state)
 
     if result.goto == "writer_agent":
         return result

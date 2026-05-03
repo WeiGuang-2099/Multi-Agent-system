@@ -1,10 +1,17 @@
 from a2a.types import AgentCard, AgentCapabilities, AgentSkill
 
+from src.config import settings
+
+
+def _base_url(port: int) -> str:
+    return f"http://localhost:{port}"
+
+
 SUPERVISOR_CARD = AgentCard(
     name="Research Supervisor",
     description="Orchestrates research tasks by decomposing them and routing to specialized agents",
     version="1.0.0",
-    url="http://localhost:8001",
+    url=_base_url(settings.supervisor_port),
     capabilities=AgentCapabilities(streaming=True),
     default_input_modes=["text/plain"],
     default_output_modes=["text/plain", "text/markdown"],
@@ -23,7 +30,7 @@ SEARCH_AGENT_CARD = AgentCard(
     name="Search Agent",
     description="Performs web searches using Tavily API to find relevant information",
     version="1.0.0",
-    url="http://localhost:8002",
+    url=_base_url(settings.search_agent_port),
     capabilities=AgentCapabilities(streaming=True),
     default_input_modes=["text/plain"],
     default_output_modes=["text/plain", "application/json"],
@@ -42,7 +49,7 @@ CODE_AGENT_CARD = AgentCard(
     name="Code Agent",
     description="Generates and executes Python code in a sandboxed Docker environment",
     version="1.0.0",
-    url="http://localhost:8003",
+    url=_base_url(settings.code_agent_port),
     capabilities=AgentCapabilities(streaming=True),
     default_input_modes=["text/plain", "application/json"],
     default_output_modes=["text/plain", "application/json"],
@@ -61,7 +68,7 @@ WRITER_AGENT_CARD = AgentCard(
     name="Writer Agent",
     description="Synthesizes research results into structured Markdown reports",
     version="1.0.0",
-    url="http://localhost:8004",
+    url=_base_url(settings.writer_agent_port),
     capabilities=AgentCapabilities(streaming=True),
     default_input_modes=["text/plain", "application/json"],
     default_output_modes=["text/markdown"],
