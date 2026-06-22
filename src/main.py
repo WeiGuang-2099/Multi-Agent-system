@@ -3,6 +3,11 @@ import asyncio
 import uuid
 
 from src.config import settings
+from src.observability import setup_observability
+
+# Initialize structured logging + LangSmith tracing at import time so every
+# subsequent log/LLM call is instrumented, regardless of run mode.
+setup_observability()
 
 AGENT_PORTS = {
     "supervisor": settings.supervisor_port,

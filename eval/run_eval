@@ -1,0 +1,57 @@
+"""CLI entry point for the evaluation suite.
+
+Run with:
+
+    python -m eval.run_eval
+    python -m eval.run_eval --dataset eval/datasets/routing_eval.csv --output eval/results/latest.json
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Run the Multi-Agent Research Assistant evaluation suite."
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="eval/datasets/routing_eval.csv",
+        help="Path to the evaluation dataset (CSV).",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Where to write the JSON report. "
+        "Defaults to eval/results/eval-<timestamp>.json.",
+    )
+    parser.add_argument(
+        "--no-save",
+        action="store_true",
+        help="Do not write a JSON file; only print the summary.",
+    )
+    args = parser.parse_args()
+
+    output_path = None
+    if not args.no_save:
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        output_path = args.output or f"eval/results/eval-{ts}.json"
+
+    from eval.evaluator import print_summary, run_evaluation
+
+    report = asyncio.run(
+        run_evaluation(dataset_path=args.dataset, output_path=output_path)
+    )
+    print_summary(report)
+
+    if output_path:
+        print(f"Full report written to: {Path(output_path).resolve()}")
+
+
+if __name__ == "__main__":
+    main()

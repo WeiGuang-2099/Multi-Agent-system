@@ -2,7 +2,6 @@ import uvicorn
 from a2a.server.apps.jsonrpc.fastapi_app import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
-from a2a.types import AgentCard
 
 from src.a2a.agent_cards import ALL_CARDS
 from src.a2a.executor import EXECUTORS

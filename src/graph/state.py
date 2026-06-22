@@ -22,9 +22,21 @@ class AgentState(TypedDict, total=False):
     retry_count: dict[str, int]
     errors: list[str]
     report_ready: bool
+    # P0.2 HITL: pending plan awaiting user approval
+    pending_plan: dict
+    approved_plans: list[dict]
+    # P1.8 Reflection: critic feedback for re-writing
+    critic_feedback: str
+    critic_rounds: int
 
 
 class RouteDecision(BaseModel):
-    agent_name: Literal["search_agent", "code_agent", "writer_agent", "FINISH"]
+    agent_name: Literal[
+        "search_agent",
+        "code_agent",
+        "writer_agent",
+        "retrieval_agent",
+        "FINISH",
+    ]
     reasoning: str
     subtask_description: str = ""

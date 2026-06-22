@@ -1,9 +1,9 @@
 import sys
 import types
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from langgraph.checkpoint.base import BaseCheckpointSaver
-from unittest.mock import AsyncMock, MagicMock
 
 
 def _make_mock_checkpointer():

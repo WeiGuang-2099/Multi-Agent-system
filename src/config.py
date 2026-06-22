@@ -48,6 +48,24 @@ class Settings(BaseSettings):
     # Retry
     max_retries: int = 3
 
+    # Human-in-the-Loop (P0.2)
+    hitl_enabled: bool = False
+    hitl_max_rounds: int = 1
+
+    # Budget / cost control (P1.10)
+    daily_token_budget: int = 0  # 0 = unlimited
+    cheap_model: str = "gpt-4o-mini"
+    strong_model: str = "gpt-4o"
+
+    # Reflection / Critic (P1.8)
+    critic_enabled: bool = False
+    critic_max_rounds: int = 2
+
+    # RAG knowledge base (P1.7)
+    rag_enabled: bool = False
+    rag_persist_dir: str = "data/chroma"
+    rag_collection: str = "research_kb"
+
     @property
     def postgres_uri(self) -> str:
         return (

@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from src.graph.state import AgentState, RouteDecision
 from src.graph.workflow import _route_from_supervisor
@@ -65,7 +65,6 @@ def test_route_empty_messages():
 
 
 def test_route_multiple_messages_picks_last():
-    from langgraph.graph import END
 
     state: AgentState = {
         "messages": [

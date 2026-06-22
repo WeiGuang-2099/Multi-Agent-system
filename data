@@ -1,0 +1,35 @@
+# LangGraph Design Notes
+
+This document captures key architectural decisions for building multi-agent
+systems with LangGraph, intended as sample content for the project's local
+knowledge base.
+
+## Supervisor-Worker Pattern
+
+LangGraph's StateGraph makes it natural to implement a supervisor-worker
+topology: a central supervisor node inspects the shared state and emits a
+`Command(goto=...)` to route execution to one of several worker nodes. Each
+worker updates the state and returns control to the supervisor, which decides
+the next step. This pattern works better than a fixed pipeline when the number
+of steps is unknown a priori (e.g., "search until enough sources are gathered").
+
+## Checkpointing
+
+The graph is compiled with a checkpointer (PostgreSQL in production,
+MemorySaver as a fallback). Checkpointing means a run can be paused and
+resumed across process restarts, which is essential for long-running research
+tasks and for Human-in-the-Loop flows that wait on user input.
+
+## Streaming Events
+
+`graph.astream_events(version="v2")` yields granular `on_chain_start` /
+`on_chain_end` / `on_tool_start` / `on_tool_end` events that a UI can map to
+human-readable status messages, giving end users real-time visibility into
+which agent is active and what tools it is calling.
+
+## Interrupt for Human-in-the-Loop
+
+Calling `interrupt(value)` inside a node suspends the graph and surfaces
+`value` to the caller. Resuming with `Command(resume=...)` injects the user's
+response back into the node, enabling approval gates, plan editing, and
+rejection paths without re-running earlier work.

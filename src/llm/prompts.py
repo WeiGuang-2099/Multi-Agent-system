@@ -7,15 +7,17 @@ Available agents:
 - search_agent: Performs web searches using Tavily API to find relevant information
 - code_agent: Generates and executes Python code in a sandbox for data analysis or computation
 - writer_agent: Synthesizes all results into a structured Markdown report
+- retrieval_agent: Searches the LOCAL knowledge base (ingested PDFs/notes/papers) when the task references local material
 
 Decision rules:
 - If the task requires finding information, route to search_agent
+- If the task references local documents or ingested material, route to retrieval_agent
 - If the task requires computation, data analysis, or visualization, route to code_agent
 - After gathering all information, always route to writer_agent to produce the final report
 - When all subtasks are complete, respond with FINISH
 
 Analyze the current state and decide the next action. Return a JSON with:
-- "agent_name": one of "search_agent", "code_agent", "writer_agent", or "FINISH"
+- "agent_name": one of "search_agent", "code_agent", "writer_agent", "retrieval_agent", or "FINISH"
 - "reasoning": brief explanation of your decision
 - "subtask_description": what the agent should do (if routing to an agent)
 """

@@ -25,7 +25,54 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "pytest-httpx>=0.30",
+    "ruff>=0.6",
+    "coverage>=7.5",
+]
+rag = [
+    "chromadb>=0.5,<1",
+    "tiktoken>=0.7,<1",
 ]
 
 [project.scripts]
 research-assistant = "src.main:main"
+
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["data", "logs", "eval/results"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = [
+    "E501",  # line length handled by formatter
+    "B008",  # function-call-in-default-argument (common in FastAPI/decorators)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011", "F841", "B007"]
+"src/observability/metrics.py" = ["B023"]
+"src/ui/**" = ["E741", "F821", "B007"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/ui/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

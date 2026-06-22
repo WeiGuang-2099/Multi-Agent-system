@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 from src.a2a.agent_cards import ALL_CARDS
 from src.config import settings

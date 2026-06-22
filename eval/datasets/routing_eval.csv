@@ -1,0 +1,11 @@
+task,expected_agents,expected_report_keywords
+"Research the latest advances in Python asyncio performance patterns",["search_agent","writer_agent"],["asyncio","performance","concurrency"]
+"Compute the factorial of 20 and analyze its prime factorization",["code_agent","writer_agent"],["factorial","prime"]
+"Research transformer architecture and write a technical summary",["search_agent","writer_agent"],["transform","attention"]
+"Generate a bar chart of the first 10 Fibonacci numbers",["code_agent","writer_agent"],["fibonacci","chart"]
+"Find recent papers on retrieval-augmented generation and summarize key findings",["search_agent","writer_agent"],["retrieval","generation"]
+"Calculate the mean and standard deviation of [1,2,3,4,5,6,7,8,9,10]",["code_agent","writer_agent"],["mean","standard deviation"]
+"Research the history of Kubernetes and explain its core architecture",["search_agent","writer_agent"],["kubernetes","architecture"]
+"Sort the list [5,3,8,1,9,2,7] and return the result",["code_agent","writer_agent"],["sort"]
+"What are the differences between TCP and UDP? Write a comparison report",["search_agent","writer_agent"],["tcp","udp"]
+"Solve the equation 2x + 5 = 15 and explain the steps",["code_agent","writer_agent"],["x","equation"]

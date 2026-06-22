@@ -13,7 +13,12 @@ logger = logging.getLogger(__name__)
 
 
 def _build_graph_builder() -> StateGraph:
-    """Create and configure the workflow graph builder with all nodes and edges."""
+    """Create and configure the workflow graph builder with all nodes and edges.
+
+    When `settings.critic_enabled` is True, a Reflection/Critic loop is added:
+    writer -> critic -> (writer | end). Otherwise the graph keeps the original
+    writer -> supervisor -> end structure.
+    """
     builder = StateGraph(AgentState)
 
     builder.add_node("supervisor", supervisor_node)
@@ -30,7 +35,24 @@ def _build_graph_builder() -> StateGraph:
 
     builder.add_conditional_edges("search_agent", route_after_worker)
     builder.add_conditional_edges("code_agent", route_after_worker)
-    builder.add_conditional_edges("writer_agent", route_after_worker)
+
+    if getattr(settings, "critic_enabled", False):
+        # P1.8: insert the critic reflection loop.
+        from src.agents.critic_agent import critic_agent_node
+
+        builder.add_node("critic_agent", critic_agent_node)
+        # writer hands off to critic (not supervisor) for self-review.
+        builder.add_edge("writer_agent", "critic_agent")
+        # critic_agent's Command(goto=...) decides writer_agent (revise) or __end__.
+    else:
+        builder.add_conditional_edges("writer_agent", route_after_worker)
+
+    # P1.7: optional RAG retrieval agent (only registered when enabled).
+    if getattr(settings, "rag_enabled", False):
+        from src.agents.retrieval_agent import retrieval_agent_node
+
+        builder.add_node("retrieval_agent", retrieval_agent_node)
+        builder.add_conditional_edges("retrieval_agent", route_after_worker)
 
     return builder
 
@@ -82,7 +104,12 @@ def _route_from_supervisor(state: AgentState) -> str:
         last = messages[-1]
         content = getattr(last, "content", str(last))
         if isinstance(content, str):
-            for agent in ["search_agent", "code_agent", "writer_agent"]:
+            for agent in [
+                "search_agent",
+                "code_agent",
+                "writer_agent",
+                "retrieval_agent",
+            ]:
                 if f"Routing to {agent}" in content:
                     return agent
             if "All tasks completed" in content:

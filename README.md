@@ -1,202 +1,188 @@
 # Multi-Agent Research Assistant
 
-A production-ready Multi-Agent research assistant built with **LangGraph** and the **A2A (Agent-to-Agent) protocol**. It automatically decomposes research tasks, coordinates specialized agents for web search, code execution, and report writing, and produces structured Markdown reports.
+[![CI](https://github.com/WeiGuang-2099/Multi-Agent-system/actions/workflows/ci.yml/badge.svg)](https://github.com/WeiGuang-2099/Multi-Agent-system/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![LangGraph](https://img.shields.io/badge/LangGraph-1.x-green.svg)](https://github.com/langchain-ai/langgraph)
 
-## Architecture
+A production-grade Multi-Agent research assistant built with **LangGraph** and
+the **A2A (Agent-to-Agent) protocol**. A supervisor decomposes research tasks
+and coordinates specialized agents for web search, sandboxed code execution,
+retrieval-augmented generation, and report writing — with reflection,
+Human-in-the-Loop approval, live streaming, full observability, and an
+automated evaluation suite.
 
-```
-                  Streamlit UI (port 8501)
-                        |
-                        v
-    +--------- SUPERVISOR (port 8001) ---------+
-    |    LangGraph StateGraph + PG checkpt     |
-    |    Routes via structured LLM output      |
-    +-----+------------+------------+-----------+
-          |            |            |
-          v            v            v
-   SEARCH_AGENT   CODE_AGENT   WRITER_AGENT
-   (port 8002)    (port 8003)   (port 8004)
-       |              |
-       v              v
-   Tavily API    Docker Sandbox
-                  (no network,
-                   512m RAM,
-                   1 CPU)
-```
+> Built as a portfolio project for AI engineering roles. See
+> [`docs/architecture.md`](docs/architecture.md) for the design rationale and
+> [`docs/adr/`](docs/adr/) for the key technical decisions.
 
-The system uses a **supervisor-based orchestration pattern**:
+---
 
-- **Supervisor** - Analyzes tasks, decomposes them into subtasks, and routes each subtask to the appropriate agent using structured LLM output
-- **Search Agent** - Performs web searches via Tavily API and summarizes results
-- **Code Agent** - Generates and executes Python code in an isolated Docker sandbox
-- **Writer Agent** - Synthesizes all collected data into a structured Markdown report
+## ✨ Highlights
 
-## Features
+| Capability | What it demonstrates |
+|------------|---------------------|
+| **Supervisor-Worker orchestration** | LangGraph `StateGraph` with structured-output routing |
+| **Dual deployment** | Single-process LangGraph *and* distributed A2A microservices |
+| **Live streaming UI** | `astream_events` → real-time "🔍 Searching / 💻 Coding / ✍️ Writing" |
+| **Human-in-the-Loop** | `interrupt()`-based plan approval/edit/reject, checkpoint-resumable |
+| **Reflection loop** | Critic agent self-reviews the report and triggers bounded revisions |
+| **RAG knowledge base** | Chroma vector store + dedicated retrieval agent |
+| **MCP integration** | Adapter to consume any Model Context Protocol server as tools |
+| **Sandboxed code exec** | Docker isolation: no network, read-only, dropped caps, pids limit |
+| **Observability** | Structured JSON logs + token/cost metrics + LangSmith tracing |
+| **Cost control** | Cheap model for routing/critic, strong model for writing |
+| **Evaluation suite** | Routing accuracy + keyword coverage + LLM-as-judge, `make eval` |
+| **CI/CD** | GitHub Actions: lint (ruff) + tests + coverage + Docker build |
 
-- **Web Search** - Tavily API integration for authoritative web research
-- **Sandboxed Code Execution** - Python code runs in an isolated Docker container with no network, resource limits, and timeout enforcement
-- **Structured Report Generation** - Produces professional Markdown reports with citations
-- **Multi-Provider LLM Support** - Anthropic (Claude), OpenAI (GPT-4), Google (Gemini)
-- **Dual Deployment Modes** - Single-process (LangGraph) or distributed (A2A HTTP servers)
-- **PostgreSQL Checkpointing** - Persistent state via LangGraph checkpointing for resumable workflows
-- **Streamlit Web UI** - Interactive chat interface with provider/model selection
-- **Retry & Error Handling** - Automatic retries per agent with configurable limits
+---
 
-## Project Structure
+## 🏗 Architecture
 
-```
-.
-├── docker-compose.yml           # Full stack orchestration
-├── Dockerfile                   # Main app container
-├── pyproject.toml               # Python package & dependencies
-├── .env.example                 # Environment variable template
-├── sandbox/
-│   └── Dockerfile.sandbox       # Isolated code execution sandbox
-├── src/
-│   ├── main.py                  # CLI entry point (4 run modes)
-│   ├── config.py                # Pydantic Settings (env vars, API keys)
-│   ├── agents/
-│   │   ├── base.py              # BaseAgent ABC with retry logic
-│   │   ├── search_agent.py      # Web search via Tavily
-│   │   ├── code_agent.py        # Code gen + sandbox execution
-│   │   └── writer_agent.py      # Report synthesis
-│   ├── graph/
-│   │   ├── state.py             # AgentState, RouteDecision models
-│   │   ├── supervisor.py        # Supervisor node + routing logic
-│   │   └── workflow.py          # LangGraph StateGraph assembly
-│   ├── llm/
-│   │   ├── providers.py         # LLM factory (Anthropic/OpenAI/Google)
-│   │   └── prompts.py           # System prompts for all agents
-│   ├── tools/
-│   │   ├── search.py            # Tavily web search tool
-│   │   └── code_executor.py     # Docker sandbox code execution
-│   ├── a2a/
-│   │   ├── agent_cards.py       # A2A AgentCard definitions
-│   │   ├── executor.py          # A2A AgentExecutor wrappers
-│   │   └── server.py            # A2A FastAPI server
-│   └── ui/
-│       └── streamlit_app.py     # Streamlit web interface
-└── tests/
-    ├── unit/                    # Unit tests (routing, search, LLM, executor)
-    └── integration/             # Integration tests (workflow, A2A)
+```mermaid
+flowchart TD
+    UI["Streamlit UI"] --> Sup["🧠 Supervisor"]
+    Sup --> SA["🔍 Search Agent"]
+    Sup --> CA["💻 Code Agent"]
+    Sup --> RA["📚 Retrieval Agent"]
+    Sup --> WA["✍️ Writer Agent"]
+    SA --> Sup
+    CA --> Sup
+    RA --> Sup
+    WA --> Crit{"🔎 Critic"}
+    Crit -->|"reject"| WA
+    Crit -->|"accept"| End([Final Report])
+    Sup -->|"FINISH"| End
 ```
 
-## Quick Start
+See [`docs/architecture.md`](docs/architecture.md) for the full diagram and
+the trade-off analysis (why supervisor-worker vs ReAct / Plan-Execute).
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
+- Python ≥ 3.11
+- Docker (for the code sandbox)
+- API keys: an LLM provider (OpenAI / Anthropic / Google) + Tavily (search)
 
-- Python >= 3.11
-- Docker (for code sandbox execution)
-- API keys for LLM provider and Tavily search
-
-### 1. Configure Environment
-
+### 1. Configure
 ```bash
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env:
+#   DEFAULT_LLM_PROVIDER=openai
+#   DEFAULT_LLM_MODEL=gpt-4o
+#   OPENAI_API_KEY=sk-...
+#   TAVILY_API_KEY=tvly-...
 ```
 
-Required keys in `.env`:
-```env
-ANTHROPIC_API_KEY=sk-ant-xxx       # or OPENAI_API_KEY / GOOGLE_API_KEY
-TAVILY_API_KEY=tvly-xxx
-DEFAULT_LLM_PROVIDER=anthropic     # anthropic | openai | google
-DEFAULT_LLM_MODEL=claude-sonnet-4-20250514
-```
-
-### 2. Install Dependencies
-
+### 2. Install
 ```bash
-pip install -e ".[dev]"
+make dev   # or: pip install -e ".[dev,rag]"
 ```
 
-### 3. Build the Sandbox Image
-
+### 3. Build the sandbox image
 ```bash
-cd sandbox && docker build -t research-assistant-sandbox:latest . && cd ..
+make docker-build   # builds main + sandbox images
 ```
 
 ### 4. Run
-
-**CLI mode** (single-process, requires PostgreSQL):
 ```bash
-# Start PostgreSQL
-docker run -d --name postgres -p 5432:5432 \
-  -e POSTGRES_DB=research_assistant \
-  -e POSTGRES_USER=agent \
-  -e POSTGRES_PASSWORD=agent_password \
-  postgres:16-alpine
+# Streamlit UI (recommended for demo)
+make run-ui
 
-# Run a research task
-python -m src.main --mode supervisor --task "Research Python asyncio performance patterns"
+# CLI single task
+make run-cli TASK="Research Python asyncio performance patterns"
+
+# Full distributed stack (A2A over HTTP)
+make docker-up
 ```
 
-**Streamlit UI mode**:
-```bash
-python -m src.main --mode ui
-```
+---
 
-**Distributed mode** (A2A, via docker-compose):
-```bash
-docker-compose up --build
-```
-
-## Run Modes
-
-| Mode | Command | Description |
-|------|---------|-------------|
-| `supervisor` | `--mode supervisor --task "..."` | Single-process LangGraph workflow |
-| `distributed` | `--mode distributed --agent <name>` | A2A server for one agent |
-| `agent` | `--mode agent --agent <name>` | Standalone A2A agent server |
-| `ui` | `--mode ui` | Streamlit web interface |
-
-## Data Flow
-
-```
-User Task --> Supervisor analyzes & routes
-  |
-  +--> Search Agent: web search via Tavily, results accumulate in state
-  |
-  +--> Code Agent: generates Python, executes in Docker sandbox
-  |
-  +--> (loop back to supervisor for next subtask)
-  |
-  +--> Writer Agent: synthesizes all results into Markdown report
-  |
-  v
-Final Report returned to user
-```
-
-The supervisor can loop through agents multiple times (search -> code -> more search -> writer) until it determines all tasks are complete.
-
-## Testing
+## 🧪 Testing & Evaluation
 
 ```bash
-# Run all tests
-pytest tests/ -v
+make test         # full unit + integration suite
+make test-unit    # unit tests only (48 tests, hermetic)
 
-# Run unit tests only
-pytest tests/unit/ -v
-
-# Run integration tests only
-pytest tests/integration/ -v
+make eval         # run the evaluation suite (needs API keys)
+# → writes eval/results/eval-<timestamp>.json
 ```
 
-## Configuration
+The evaluation suite scores the system on three axes — see
+[`eval/README.md`](eval/README.md):
+- **Routing accuracy** (deterministic, vs expected agents)
+- **Keyword coverage** (deterministic)
+- **Report quality** (LLM-as-judge, 1–5)
 
-All configuration is managed via environment variables (see `.env.example`):
+---
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DEFAULT_LLM_PROVIDER` | `anthropic` | LLM provider (anthropic/openai/google) |
-| `DEFAULT_LLM_MODEL` | `claude-sonnet-4-20250514` | Default model name |
-| `SEARCH_AGENT_MODEL` | - | Per-agent model override |
-| `CODE_AGENT_MODEL` | - | Per-agent model override |
-| `WRITER_AGENT_MODEL` | - | Per-agent model override |
-| `SANDBOX_MEMORY_LIMIT` | `512m` | Docker sandbox memory limit |
-| `SANDBOX_CPU_LIMIT` | `1` | Docker sandbox CPU limit |
-| `SANDBOX_TIMEOUT` | `30` | Code execution timeout (seconds) |
-| `MAX_RETRIES` | `3` | Max retry attempts per agent |
+## ⚙️ Optional Features (toggle in `.env`)
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `HITL_ENABLED` | `false` | Pause after supervisor plan for user approval |
+| `CRITIC_ENABLED` | `false` | Critic reflection loop after writer |
+| `RAG_ENABLED` | `false` | Retrieval agent + Chroma knowledge base |
+| `LANGSMITH_TRACING` | `false` | Full per-node tracing in LangSmith UI |
+
+Index local documents for RAG:
+```bash
+python scripts/ingest.py data/sample_docs/
+```
+
+---
+
+## 📁 Project Structure
+
+```
+.
+├── src/
+│   ├── agents/          # search, code, writer, critic, retrieval agents
+│   ├── graph/           # StateGraph, supervisor routing, streaming callbacks
+│   ├── llm/             # provider factory (cost-aware), prompts
+│   ├── tools/           # Tavily search, Docker sandbox, RAG, MCP adapter
+│   ├── observability/   # JSON logs, token/cost metrics, LangSmith tracing
+│   ├── a2a/             # A2A JSON-RPC server + client (distributed mode)
+│   └── ui/              # Streamlit app with live streaming + HITL panel
+├── eval/                # evaluation dataset, LLM-judge, run_eval CLI
+├── tests/               # unit + integration tests (pytest)
+├── docs/                # architecture.md, ADRs
+├── scripts/             # ingest.py (RAG indexing)
+├── data/sample_docs/    # example knowledge-base content
+├── docker-compose.yml   # full distributed stack
+└── Makefile             # install / test / eval / run / docker targets
+```
+
+---
+
+## 🎓 Design Decisions (interview talking points)
+
+- **Why LangGraph?** Explicit state machine + checkpointing + `interrupt()` +
+  streaming events in one library. See
+  [`docs/adr/`](docs/adr/README.md#adr-0001-use-langgraph-for-multi-agent-orchestration).
+- **Why supervisor-worker, not Plan-Execute?** Research is exploratory; the
+  next step depends on results. Re-deciding after each step beats a static
+  upfront plan. ([ADR-0002](docs/adr/README.md#adr-0002-supervisor-worker-topology-not-plan-execute))
+- **Why a Docker sandbox?** Arbitrary LLM-generated code must never touch the
+  host. Network-none + read-only + dropped caps is a strong, portable
+  baseline. ([ADR-0003](docs/adr/README.md#adr-0003-docker-sandbox-for-code-execution))
+- **Why a separate Critic agent?** A different model/prompt is more candid
+  about gaps than self-critique; the bounded loop guarantees termination.
+  ([ADR-0004](docs/adr/README.md#adr-0004-reflection-critic-loop-for-report-quality))
+
+---
+
+## 📦 Deployment (Demo)
+
+The Streamlit UI is deployable to **Streamlit Community Cloud** or
+**Hugging Face Spaces**. On sandboxless hosts the Code Agent falls back to a
+restricted local-execution mode. See `docs/deployment.md` for step-by-step
+instructions (coming soon).
+
+---
 
 ## License
 

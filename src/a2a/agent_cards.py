@@ -1,4 +1,4 @@
-from a2a.types import AgentCard, AgentCapabilities, AgentSkill
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
 from src.config import settings
 
